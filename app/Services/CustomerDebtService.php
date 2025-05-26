@@ -1,131 +1,168 @@
 <?php
 namespace App\Services;
 
-use Exception;
-use App\Models\Customer;
 use App\Events\DebtProcessed;
+use Exception;
+use App\Services\Service;
+use App\Models\CustomerDebt;
 use App\Models\CustomerDebts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Service;
 
 /**
- * Service class responsible for managing customer debts.
- * It handles creation, updating, and deletion of debt records,
- * including balance calculations and adjustments.
+ * CustomerDebtService: Handles customer debt operations.
+ * - Create new debts
+ * - Update existing debts
+ * - Delete debts while adjusting balances
  */
-
 class CustomerDebtService extends Service
 {
     /**
-     * Create a new debt record for a customer and calculate updated balance.
+     * Create a new customer debt record.
+     * This method calculates and updates the remaining balance.
      *
-     * @param array $data Debt details including credit/debit, customer ID, and optional receipt.
-     * @return array Response array containing status, message, and data.
+     * @param array $data Customer debt details (amount_due, amount_paid, customer_id, etc.)
+     * @return array Response containing success or failure message
      */
-
     public function createCustomerDebt($data)
     {
         try {
-            // Get the current balance from the most recent debt record
-            $currentBalance = CustomerDebts::where("customer_id", $data['customer_id'])
-                                  ->latest('created_at')
-                                  ->value('total_balance') ?? 0;
+            // Retrieve the latest debt record for the customer
+            $latestDebt = CustomerDebt::where("customer_id", $data['customer_id'])
+                ->latest('id')
+                ->first();
 
-            // Validate and calculate new balance
-            if (!empty($data['credit'])) {
-                $newBalance = $currentBalance + $data['credit'];
-            } elseif (!empty($data['debit'])) {
-                // Prevent over-withdrawal
-                $newBalance = $currentBalance - $data['debit'];
+            $remainingAmount = $latestDebt->remaining_amount ?? 0;
+            $newRemainingAmount = $remainingAmount;
+
+            // Adjust remaining balance based on debt or payment
+            if (!empty($data['amount_due'])) {
+                $newRemainingAmount += $data['amount_due'];
+                $message = 'تم تسجيل دين بنجاح'; // Arabic success message
+            } elseif (!empty($data['amount_paid'])) {
+                $newRemainingAmount -= $data['amount_paid'];
+                $message = 'تم تسجيل تسديد بنجاح';
             }
 
             // Create the new debt record
-            $debt = CustomerDebts::create([
+            $data = CustomerDebt::create([
                 'customer_id' => $data['customer_id'],
-                'credit' => $data['credit'] ?? 0,
-                'debit' => $data['debit'] ?? 0,
-                'debt_date' => $data['debt_date'] ?? now(),
-                'total_balance' => $newBalance,
-                'receipt_id' => $data['receipt_id'] ?? null,
+                'amount_due' => $data['amount_due'] ?? 0,
+                'amount_paid' => $data['amount_paid'] ?? 0,
+                'due_date' => $data['due_date'] ?? now(),
+                'remaining_amount' =>  $newRemainingAmount,
             ]);
 
-            return $this->successResponse($debt, 'تم تسجيل الدين بنجاح.');
+            return $this->successResponse($message);
 
         } catch (Exception $e) {
-            Log::error('Create debt error: ' . $e->getMessage());
+            Log::error('حدث خطأ أثناء عملية التسجيل :' . $e->getMessage());
             return $this->errorResponse('حدث خطأ أثناء عملية التسجيل. يرجى المحاولة لاحقًا.');
         }
     }
 
-
     /**
-      * Update an existing debt record and recalculate the balance history.
-      *
-      * @param array $data Updated debt details.
-      * @param CustomerDebts $customerDebt The existing debt record to update.
-      * @return array Response array containing status, message, and updated data.
-      */
-
-    public function updateCustomerDebt($data, CustomerDebts $CustomerDebts)
+     * Update an existing customer debt record.
+     * This method recalculates the balance based on the new amounts provided.
+     *
+     * @param array $data Updated debt details (amount_due, amount_paid, etc.)
+     * @param CustomerDebts $CustomerDebts Existing customer debt record
+     * @return array Response indicating success or failure
+     */
+    public function updateCustomerDebt($data, CustomerDebt $CustomerDebt)
     {
         DB::beginTransaction();
         try {
-            $CustomerDebts->update([
-                'credit' => $data['credit'] ?? 0,
-                'debit' => $data['debit'] ?? 0,
-                'debt_date' => $data['debt_date'] ?? $CustomerDebts->debt_date,
-                'receipt_id' => $data['receipt_id'] ?? $CustomerDebts->receipt_id,
+            $message = 'لم يتم تعديل أي بيانات'; // Default message in Arabic
+
+            // Retrieve the latest previous debt record
+            $latestDebt = CustomerDebt::where("customer_id", $CustomerDebt->customer_id)
+                ->where('id', '<', $CustomerDebt->id)
+                ->latest('id')
+                ->first();
+
+            $remainingAmount = $latestDebt->remaining_amount ?? 0;
+            $newRemainingAmount = $remainingAmount;
+
+            // Update balance based on debt or payment changes
+            if (!empty($data['amount_due']) && isset($CustomerDebt->amount_due) && $CustomerDebt->amount_due > 0) {
+                $newRemainingAmount += $data['amount_due'];
+                $message = 'تم تحديث الدين بنجاح';
+            } elseif (!empty($data['amount_paid']) && isset($CustomerDebt->amount_paid) && $CustomerDebt->amount_paid > 0) {
+                $newRemainingAmount = max(0, $remainingAmount - $data['amount_paid']);
+                $message = 'تم تحديث التسديد بنجاح';
+            }
+
+            // If no changes were made, return without updating
+            if ($message === 'لم يتم تعديل أي بيانات') {
+                DB::commit();
+                return $this->successResponse($message);
+            }
+
+            // Update the existing debt record
+            $CustomerDebt->update([
+                'amount_due' => $data['amount_due'] ?? 0,
+                'amount_paid' => $data['amount_paid'] ?? 0,
+                'due_date' => $data['due_date'] ?? $CustomerDebt->due_date,
+                'remaining_amount' => $newRemainingAmount,
             ]);
+            if(! $latestDebt) {
+                event(new DebtProcessed());
 
-            $debts = CustomerDebts::where('customer_id', $CustomerDebts->customer_id)
-                ->orderBy('id')
-                ->get();
-
-            $total = 0;
-            foreach ($debts as $d) {
-                $total += $d->credit - $d->debit;
-                $d->update(['total_balance' => $total]);
+            } else {
+                event(new DebtProcessed($latestDebt));
             }
 
             DB::commit();
-            return $this->successResponse($CustomerDebts, 'تم تحديث الدين بنجاح.');
+            return $this->successResponse($message);
+
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Update debt error: ' . $e->getMessage());
-            return $this->errorResponse('حدث خطأ أثناء تحديث الدين. يرجى المحاولة لاحقًا.');
+            Log::error('حدث خطأ أثناء التحديث: ' . $e->getMessage());
+            return $this->errorResponse('حدث خطأ أثناء التحديث. يرجى المحاولة لاحقًا.');
         }
     }
 
-
     /**
-         * Delete a debt record and trigger balance adjustment via event.
-         *
-         * @param CustomerDebts $customerDebt The debt record to be deleted.
-         * @return array Response array indicating deletion success or failure.
-         */
-
-    public function deleteCustomerDebt(CustomerDebts $CustomerDebts)
+     * Delete a customer debt record.
+     * This method removes the debt entry and triggers balance adjustments if needed.
+     *
+     * @param CustomerDebts $CustomerDebts Debt record to be deleted
+     * @return array Response indicating success or failure
+     */
+    public function deleteCustomerDebt(CustomerDebt $CustomerDebt)
     {
-        try {
-            Log::error('Delete debt error:', ['CustomerDebts' => $CustomerDebts->toArray()]);
+        DB::beginTransaction();
 
-            // Handle balance adjustment before deletion
-            if (!empty($CustomerDebts->credit)) {
-                $adjustment = -$CustomerDebts->credit;
-                event(new DebtProcessed($CustomerDebts->id, $CustomerDebts->customer_id, $adjustment));
-            } elseif (!empty($debt->debit)) {
-                $adjustment = $CustomerDebts->debit;
-                event(new DebtProcessed($CustomerDebts->id, $CustomerDebts->customer_id, $adjustment));
+        try {
+            // Determine type of deletion (debt or payment)
+            if (isset($CustomerDebt->amount_due) && $CustomerDebt->amount_due > 0) {
+                $message = 'تم حذف الدين بنجاح';
+            } elseif (isset($CustomerDebt->amount_paid) && $CustomerDebt->amount_paid > 0) {
+                $message = 'تم حذف التسديد بنجاح';
             }
 
-            // Delete the record
-            $CustomerDebts->delete();
-            return $this->successResponse('تم حذف الدين بنجاح.');
+            $latestDebt = CustomerDebt::where("customer_id", $CustomerDebt->customer_id)
+            ->where('id', '<', $CustomerDebt->id)
+            ->latest('id')
+            ->first();
+
+            $CustomerDebt->delete();
+            if(! $latestDebt) {
+                event(new DebtProcessed());
+
+            } else {
+                event(new DebtProcessed($latestDebt));
+            }
+            DB::commit();
+
+            return $this->successResponse($message);
+
         } catch (Exception $e) {
-            Log::error('Delete debt error: ' . $e->getMessage());
+            DB::rollBack();
+
+            Log::error('حدث خطأ أثناء حذف الدين: ' . $e->getMessage());
             return $this->errorResponse('حدث خطأ أثناء حذف الدين. يرجى المحاولة لاحقًا.');
         }
     }
-
 }

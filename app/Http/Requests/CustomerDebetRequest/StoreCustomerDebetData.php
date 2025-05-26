@@ -25,10 +25,9 @@ class StoreCustomerDebetData extends FormRequest
     {
         return [
             'customer_id' => 'required|integer|exists:customers,id',
-            'credit' => 'nullable|integer|min:0|required_without:debit',
-            'debit'  => 'nullable|integer|min:0|required_without:credit',
-            'debt_date' => 'nullable|date|before_or_equal:now',
-            'receipt_id' => 'nullable|integer|',
+            'amount_due' => 'nullable|integer|min:0|required_without:amount_paid',
+            'amount_paid'  => 'nullable|integer|min:0|required_without:amount_due',
+            'due_date' => 'nullable|date|before_or_equal:now',
         ];
     }
 

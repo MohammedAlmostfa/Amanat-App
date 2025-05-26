@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\CustomerDebetRequest\StoreCustomerDebetData;
-use App\Http\Requests\CustomerDebetRequest\UpdateCustomerDebetData;
+use App\Models\CustomerDebt;
 use Illuminate\Http\Request;
 use App\Models\CustomerDebts;
 use Illuminate\Http\JsonResponse;
 use App\Services\CustomerDebtService;
 use App\Http\Requests\CustomerRequest\StoreCustomerData;
 use App\Http\Requests\CustomerRequest\UpdateCustomerData;
+use App\Http\Requests\CustomerDebetRequest\StoreCustomerDebetData;
+use App\Http\Requests\CustomerDebetRequest\UpdateCustomerDebetData;
 
 class CustomerDebtsController extends Controller
 {
@@ -44,7 +45,7 @@ class CustomerDebtsController extends Controller
         // Return an appropriate response based on the result status
         return $result['status'] === 200
             ? $this->success($result['data'], $result['message'], $result['status'])
-            : $this->error($result['data'], $result['message'], $result['status']);
+            : $this->error(null, $result['message'], $result['status']);
     }
     /**
      * Update an existing debt record.
@@ -55,15 +56,16 @@ class CustomerDebtsController extends Controller
      */
 
 
-    public function update(UpdateCustomerDebetData $request, CustomerDebts $CustomerDebts): JsonResponse
+    public function update(UpdateCustomerDebetData $request, $id): JsonResponse
     {
+        $CustomerDebts =CustomerDebt::findOrFail($id);
         // Process the update using the DebtService
         $result = $this->CustomerDebtService->updateCustomerDebt($request->validated(), $CustomerDebts);
 
         // Return an appropriate response based on the result status
         return $result['status'] === 200
             ? $this->success($result['data'], $result['message'], $result['status'])
-            : $this->error($result['data'], $result['message'], $result['status']);
+            : $this->error(null, $result['message'], $result['status']);
     }
 
 
@@ -76,13 +78,13 @@ class CustomerDebtsController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        $customerDebts = CustomerDebts::findOrFail($id);
+        $customerDebts = CustomerDebt::findOrFail($id);
 
         $result = $this->CustomerDebtService->deleteCustomerDebt($customerDebts);
 
         // Return an appropriate response based on the result status
         return $result['status'] === 200
             ? $this->success($result['data'], $result['message'], $result['status'])
-            : $this->error($result['data'], $result['message'], $result['status']);
+            : $this->error(null, $result['message'], $result['status']);
     }
 }

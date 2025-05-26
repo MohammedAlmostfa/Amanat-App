@@ -40,6 +40,31 @@ class CustomerService extends Service
             return $this->errorResponse('فشل في استرجاع العملاء');
         }
     }
+    public function getAllCustomersWithDebt($filteringData)
+    {
+        try {
+
+            $customers = Customer::with(['customerDebts' => function ($query) {
+                $query->where('amount_paid', 0) // جلب السجلات غير المدفوعة فقط
+                      ->latest('id') //
+                      ->limit(1);
+            }])
+                ->when(!empty($filteringData), function ($query) use ($filteringData) {
+                    $query->filterBy($filteringData);
+                })
+                ->get();
+
+
+
+            return $this->successResponse('تم استرجاع العملاء بنجاح', $customers);
+        } catch (Exception $e) {
+
+            Log::error('خطأ أثناء استرجاع العملاء: ' . $e->getMessage());
+
+
+            return $this->errorResponse('فشل في استرجاع العملاء');
+        }
+    }
 
 
     /**

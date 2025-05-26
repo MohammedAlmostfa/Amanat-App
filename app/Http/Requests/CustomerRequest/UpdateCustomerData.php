@@ -24,8 +24,8 @@ class UpdateCustomerData extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'nullable|string|max:255',
-            'phone' => 'nullable',
+            'name' => 'nullable|string|max:255|unique:customers,name',
+            'phone' => 'nullable|unique:customers,phone|max:20|unique:customers,phone',
             'notes' => 'nullable|string|max:1000',
             'details'=>'nullable|string',
         ];
