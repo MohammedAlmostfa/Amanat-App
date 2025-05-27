@@ -35,7 +35,7 @@ class CustomerService extends Service
                 ->when(!empty($filteringData), function ($query) use ($filteringData) {
                     $query->filterBy($filteringData);
                 })
-                ->get();
+                ->paginate(20);
 
             return $this->successResponse('تم استرجاع العملاء بنجاح', $customers);
         } catch (Exception $e) {

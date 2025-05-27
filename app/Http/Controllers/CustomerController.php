@@ -7,6 +7,7 @@ use GuzzleHttp\Psr7\Request;
 use App\Services\CustomerService;
 use Illuminate\Http\JsonResponse;
 use App\Http\Resources\customerResource;
+use App\Http\Resources\CustomerDataResource;
 use App\Http\Requests\CustomerRequest\FilteringData;
 use App\Http\Requests\DebetRequest\FilteringDebtData;
 use App\Http\Requests\CustomerRequest\StoreCustomerData;
@@ -49,7 +50,7 @@ class CustomerController extends Controller
         $result = $this->customerService->getAllCustomers($request->validated());
 
         return $result['status'] === 200
-            ? $this->successshow($result['data'], $result['message'], $result['status'])
+            ? $this->paginated($result['data'], CustomerDataResource::class, $result['message'], $result['status'])
             : $this->error(null, $result['message'], $result['status']);
     }
 
