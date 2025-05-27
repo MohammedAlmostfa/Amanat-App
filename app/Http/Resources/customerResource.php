@@ -18,6 +18,7 @@ class CustomerResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'notes' => $this->notes,
+            'phone' => $this->phone,
             'address' => $this->address,
             'last_payment_duration' =>(int)  $this->last_payment_duration,
             'remaining_amount' => $this->latestDebt ? $this->latestDebt->remaining_amount : null,

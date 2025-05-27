@@ -1,11 +1,12 @@
 <?php
 namespace App\Services;
 
-use App\Events\DebtProcessed;
 use Exception;
 use App\Services\Service;
 use App\Models\CustomerDebt;
+use App\Events\DebtProcessed;
 use App\Models\CustomerDebts;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Log;
  */
 class CustomerDebtService extends Service
 {
+
     /**
      * Create a new customer debt record.
      * This method calculates and updates the remaining balance.
@@ -24,6 +26,7 @@ class CustomerDebtService extends Service
      * @param array $data Customer debt details (amount_due, amount_paid, customer_id, etc.)
      * @return array Response containing success or failure message
      */
+
     public function createCustomerDebt($data)
     {
         try {

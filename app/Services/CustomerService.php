@@ -64,7 +64,7 @@ class CustomerService extends Service
                 ->get()->map(function ($customer) {
 
                     $latestUnpaidDebt =      CustomerDebt::where('customer_id', $customer->id)
-                        ->where('amount_paid', 0)
+                        ->where('amount_due', 0)
                         ->orderBy('id', 'desc')
                         ->first();
                     $daysDifference = null;

@@ -8,6 +8,7 @@ use App\Models\CustomerDebts;
 use Illuminate\Http\JsonResponse;
 use App\Services\CustomerDebtService;
 use App\Http\Requests\CustomerRequest\StoreCustomerData;
+use App\Http\Requests\CustomerDebetRequest\FilteringData;
 use App\Http\Requests\CustomerRequest\UpdateCustomerData;
 use App\Http\Requests\CustomerDebetRequest\StoreCustomerDebetData;
 use App\Http\Requests\CustomerDebetRequest\UpdateCustomerDebetData;
@@ -20,6 +21,7 @@ class CustomerDebtsController extends Controller
      * @var CustomerDebtService
      */
     protected CustomerDebtService $CustomerDebtService;
+
 
     /**
      * Constructor to inject the service dependency.
