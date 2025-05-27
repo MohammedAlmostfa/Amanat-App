@@ -55,31 +55,26 @@ class CustomerService extends Service
     public function getAllCustomersWithDebt($filteringData)
     {
         try {
-            $customers = Customer::with(['customerdebts' => function ($query) use ($filteringData) {
-                $query->select('id', 'customer_id', 'remaining_amount', 'due_date', 'amount_paid')
-                      ->orderBy('id', 'desc')
-                      ->limit(1);
-            }])->get()->map(function ($customer) {
+            $customers = Customer::whereHas('latestdebt', function ($query) {
+                $query->where('remaining_amount', '>', 0);
+            })->with(['latestdebt' => function ($query) {
+                $query->select('customer_debts.id', 'customer_debts.customer_id', 'customer_debts.remaining_amount'); // استخدام أسماء الجدول بوضوح
+            }])
 
-                $customer->status = 3;
+                ->get()->map(function ($customer) {
+                    $customer->status = 1;
+                    $latestUnpaidDebt =      CustomerDebt::where('customer_id', $customer->id)
+                        ->where('amount_paid', 0)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                    if ($latestUnpaidDebt) {
+                        $daysDifference = Carbon::parse($latestUnpaidDebt->due_date)->diffInDays(now());
+                        $customer->status = ($daysDifference > 20) ? 0 : 1;
+                    }
 
+                    return $customer;
+                });
 
-                $latestDebt = $customer->customerdebts->first();
-
-                $latestUnpaidDebt = CustomerDebt::where('customer_id', $customer->id)
-                                                ->where('amount_paid', 0)
-                                                ->orderBy('id', 'desc')
-                                                ->first();
-
-                if ($latestUnpaidDebt) {
-                    $daysDifference = Carbon::parse($latestUnpaidDebt->due_date)->diffInDays(now());
-
-                    // تحديث `status` بناءً على السجل غير المدفوع
-                    $customer->status = ($daysDifference > 20 || $latestDebt->remaining_amount != 0) ? 0 : 1;
-                }
-
-                return $customer;
-            });
 
             return $this->successResponse('تم استرجاع العملاء بنجاح', $customers);
         } catch (Exception $e) {
@@ -87,6 +82,7 @@ class CustomerService extends Service
             return $this->errorResponse('فشل في استرجاع العملاء');
         }
     }
+
 
     /**
      * Retrieve debts of a specific customer.

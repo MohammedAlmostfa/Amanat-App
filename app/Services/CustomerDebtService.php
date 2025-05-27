@@ -51,6 +51,7 @@ class CustomerDebtService extends Service
                 'amount_paid' => $data['amount_paid'] ?? 0,
                 'due_date' => $data['due_date'] ?? now(),
                 'remaining_amount' =>  $newRemainingAmount,
+                'notes'=> $data['notes'] ?? null,
             ]);
 
             return $this->successResponse($message);
@@ -105,6 +106,7 @@ class CustomerDebtService extends Service
                 'amount_paid' => $data['amount_paid'] ?? 0,
                 'due_date' => $data['due_date'] ?? $CustomerDebt->due_date,
                 'remaining_amount' => $newRemainingAmount,
+                'notes'=> $data['notes'] ?? $CustomerDebt->notes,
             ]);
             $customerId= $CustomerDebt->customer_id;
             event(new DebtProcessed($latestDebt, $customerId));

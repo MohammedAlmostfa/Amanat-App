@@ -37,26 +37,27 @@ class UpdateRemainingAmount
             $CustomerDebt = CustomerDebt::where("customer_id", $customerId)
                 ->orderBy('id', 'asc')
                 ->first();
+            if(!is_null($CustomerDebt)) {
+                $lastRemainingAmount = 0; // Initialize remaining amount to zero
 
-            $lastRemainingAmount = 0; // Initialize remaining amount to zero
+                // Retrieve all debts from the first record onwards
+                $CustomerDebts = CustomerDebt::where("customer_id", $customerId)
+                    ->where('id', '>=', $CustomerDebt->id)
+                    ->orderBy('id', 'asc')
+                    ->get();
 
-            // Retrieve all debts from the first record onwards
-            $CustomerDebts = CustomerDebt::where("customer_id", $customerId)
-                ->where('id', '>=', $CustomerDebt->id)
-                ->orderBy('id', 'asc')
-                ->get();
+                // If there are subsequent debts, update their remaining balance
+                if ($CustomerDebts->isNotEmpty()) {
+                    foreach ($CustomerDebts as $CustomerDebt) {
+                        // Calculate new remaining amount based on payments and dues
+                        $CustomerDebt->remaining_amount = $lastRemainingAmount - $CustomerDebt->amount_paid + $CustomerDebt->amount_due;
 
-            // If there are subsequent debts, update their remaining balance
-            if ($CustomerDebts->isNotEmpty()) {
-                foreach ($CustomerDebts as $CustomerDebt) {
-                    // Calculate new remaining amount based on payments and dues
-                    $CustomerDebt->remaining_amount = $lastRemainingAmount - $CustomerDebt->amount_paid + $CustomerDebt->amount_due;
+                        // Save the updated debt record
+                        $CustomerDebt->save();
 
-                    // Save the updated debt record
-                    $CustomerDebt->save();
-
-                    // Update the last remaining amount for the next record
-                    $lastRemainingAmount = $CustomerDebt->remaining_amount;
+                        // Update the last remaining amount for the next record
+                        $lastRemainingAmount = $CustomerDebt->remaining_amount;
+                    }
                 }
             }
         } else {

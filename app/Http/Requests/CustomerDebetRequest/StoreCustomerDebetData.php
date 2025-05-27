@@ -28,6 +28,8 @@ class StoreCustomerDebetData extends FormRequest
             'amount_due' => 'nullable|integer|min:0|required_without:amount_paid',
             'amount_paid'  => 'nullable|integer|min:0|required_without:amount_due',
             'due_date' => 'nullable|date|before_or_equal:now',
+            'notes' => 'nullable|string|max:1000',
+
         ];
     }
 

@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->integer('amount_paid')->default(0);
             $table->date('due_date');
             $table->integer('remaining_amount');
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }
