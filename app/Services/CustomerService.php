@@ -2,92 +2,110 @@
 
 namespace App\Services;
 
-use App\Models\Customer;
 use Exception;
-use Illuminate\Support\Facades\Log;
+use App\Models\Customer;
+use App\Models\CustomerDebt;
 use App\Services\Service;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Handles customer CRUD (Create, Read, Update, Delete) operations.
- * Provides methods for managing customer data and interacting with the database.
+ * Class CustomerService
+ *
+ * Service class responsible for handling customer-related operations such as:
+ * - Retrieving customer lists (with filtering)
+ * - Managing customer debts
+ * - Creating, updating, and deleting customers
  */
 class CustomerService extends Service
 {
     /**
      * Retrieve all customers.
      *
-     * Fetches all customers from the database.
+     * Fetches a list of all customers, optionally filtered by criteria.
      *
+     * @param array $filteringData Filters to apply on customer data
      * @return array Response containing status, message, and list of customers.
      */
     public function getAllCustomers($filteringData)
     {
         try {
-
+            // Fetch customers with optional filtering
             $customers = Customer::query()
                 ->when(!empty($filteringData), function ($query) use ($filteringData) {
                     $query->filterBy($filteringData);
                 })
                 ->get();
 
-
             return $this->successResponse('تم استرجاع العملاء بنجاح', $customers);
         } catch (Exception $e) {
-
+            // Log the error for debugging
             Log::error('خطأ أثناء استرجاع العملاء: ' . $e->getMessage());
-
 
             return $this->errorResponse('فشل في استرجاع العملاء');
         }
     }
+
+    /**
+     * Retrieve all customers along with their latest unpaid debts.
+     *
+     * @param array $filteringData Filters for customer retrieval
+     * @return array Response containing customers and their latest debts.
+     */
     public function getAllCustomersWithDebt($filteringData)
     {
         try {
+            // Fetch customers along with their latest unpaid debts
+            $customers = Customer::with(['customerdebts' => function ($query) use ($filteringData) {
+                $query->select('id', 'customer_id', 'remaining_amount', 'due_date')
+                      ->where('amount_paid', 0)
+                      ->latest('id')
+                      ->when(!empty($filteringData), function ($query) use ($filteringData) {
+                          $query->filterBy($filteringData);
+                      });
+            }])->get()->map(function ($customer) {
+                // Default customer status
+                $customer->status = 1;
 
-            $customers = Customer::with(['customerDebts' => function ($query) {
-                $query->where('amount_paid', 0) // جلب السجلات غير المدفوعة فقط
-                      ->latest('id') //
-                      ->limit(1);
-            }])
-                ->when(!empty($filteringData), function ($query) use ($filteringData) {
-                    $query->filterBy($filteringData);
-                })
-                ->get();
+                // Retrieve latest debt
+                $latestDebt = $customer->customerdebts->first();
 
+                if ($latestDebt) {
+                    // Calculate days difference
+                    $daysDifference = Carbon::parse($latestDebt->due_date)->diffInDays(now());
 
+                    // Determine status based on overdue period
+                    $customer->status = ($daysDifference > 20) ? 0 : 1;
+                }
+
+                return $customer;
+            });
 
             return $this->successResponse('تم استرجاع العملاء بنجاح', $customers);
         } catch (Exception $e) {
-
+            // Log any errors
             Log::error('خطأ أثناء استرجاع العملاء: ' . $e->getMessage());
-
 
             return $this->errorResponse('فشل في استرجاع العملاء');
         }
     }
 
-
     /**
-     * Retrieve customer debts.
+     * Retrieve debts of a specific customer.
      *
-     * Fetches the customer and their associated debts using eager loading.
-     *
-     * @param int $id ID of the customer.
+     * @param int $id Customer ID
      * @return array Response containing status, message, and customer debts.
      */
     public function getCustomerDebts($id)
     {
         try {
-            // Fetch the customer along with their debts
-            $customer = Customer::findOrFail($id);
-
-            // Return success response with debts
-            return $this->successResponse('تم استرجاع ديون العميل بنجاح', $customer->customerdebts);
+            // Fetch customer along with debts
+            $customerdebts = CustomerDebt::where('customer_id', $id)->get();
+            return $this->successResponse('تم استرجاع ديون العميل بنجاح', $customerdebts);
         } catch (Exception $e) {
-            // Log error details for debugging
+            // Log any errors for debugging
             Log::error('خطأ أثناء استرجاع ديون العميل: ' . $e->getMessage());
 
-            // Return error response
             return $this->errorResponse('فشل في استرجاع ديون العميل');
         }
     }
@@ -95,8 +113,8 @@ class CustomerService extends Service
     /**
      * Create a new customer.
      *
-     * @param array $data Array containing customer details ['name', 'phone', 'notes'].
-     * @return array Response containing status, message, and created customer data.
+     * @param array $data Customer details: ['name', 'phone', 'notes']
+     * @return array Response containing status and created customer data.
      */
     public function createCustomer(array $data): array
     {
@@ -104,13 +122,11 @@ class CustomerService extends Service
             // Create new customer record
             $customer = Customer::create($data);
 
-            // Return success response
             return $this->successResponse('تم إنشاء العميل بنجاح', $customer);
         } catch (Exception $e) {
             // Log error details for debugging
             Log::error('خطأ أثناء إنشاء العميل: ' . $e->getMessage());
 
-            // Return error response
             return $this->errorResponse('فشل في إنشاء العميل');
         }
     }
@@ -118,11 +134,9 @@ class CustomerService extends Service
     /**
      * Update an existing customer.
      *
-     * Updates the details of an existing customer.
-     *
-     * @param array $data Array containing updated customer details ['name', 'phone', 'notes'].
-     * @param Customer $customer The customer to be updated.
-     * @return array Response containing status, message, and updated customer data.
+     * @param array $data Updated customer details ['name', 'phone', 'notes']
+     * @param Customer $customer Customer instance to be updated
+     * @return array Response containing status and updated customer data.
      */
     public function updateCustomer(array $data, Customer $customer): array
     {
@@ -130,24 +144,20 @@ class CustomerService extends Service
             // Update customer record
             $customer->update($data);
 
-            // Return success response
             return $this->successResponse('تم تحديث العميل بنجاح', $customer);
         } catch (Exception $e) {
             // Log error details for debugging
             Log::error('خطأ أثناء تحديث العميل: ' . $e->getMessage());
 
-            // Return error response
             return $this->errorResponse('فشل في تحديث العميل');
         }
     }
 
     /**
-     * Delete a customer.
+     * Delete a customer record.
      *
-     * Removes a customer from the database.
-     *
-     * @param Customer $customer The customer to be deleted.
-     * @return array Response containing status and message.
+     * @param Customer $customer Customer instance to be deleted
+     * @return array Response indicating success or failure.
      */
     public function deleteCustomer(Customer $customer): array
     {
@@ -155,16 +165,12 @@ class CustomerService extends Service
             // Delete customer record
             $customer->delete();
 
-            // Return success response
             return $this->successResponse('تم حذف العميل بنجاح');
         } catch (Exception $e) {
             // Log error details for debugging
             Log::error('خطأ أثناء حذف العميل: ' . $e->getMessage());
 
-            // Return error response
             return $this->errorResponse('فشل في حذف العميل');
         }
     }
-
-
 }

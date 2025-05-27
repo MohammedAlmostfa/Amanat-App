@@ -10,9 +10,10 @@ Route::post('/login', [AuthController::class, 'login']); // Handles user login
 
 Route::post('resetPassword', [AuthController::class, 'resetPassword']);
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
-Route::apiResource('customer', CustomerController::class);
 
+
+Route::apiResource('customer', CustomerController::class);
+Route::get('customer/{id}/debts', [CustomerController::class,'show' ]);
+
+Route::get('customers/debt', [CustomerController::class,'getAllCustomersWithDebt' ]);
 Route::apiResource('/debt', CustomerDebtsController::class);

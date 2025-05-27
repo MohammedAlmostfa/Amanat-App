@@ -106,12 +106,9 @@ class CustomerDebtService extends Service
                 'due_date' => $data['due_date'] ?? $CustomerDebt->due_date,
                 'remaining_amount' => $newRemainingAmount,
             ]);
-            if(! $latestDebt) {
-                event(new DebtProcessed());
+            $customerId= $CustomerDebt->customer_id;
+            event(new DebtProcessed($latestDebt, $customerId));
 
-            } else {
-                event(new DebtProcessed($latestDebt));
-            }
 
             DB::commit();
             return $this->successResponse($message);
@@ -146,14 +143,11 @@ class CustomerDebtService extends Service
             ->where('id', '<', $CustomerDebt->id)
             ->latest('id')
             ->first();
-
+            $customerId= $CustomerDebt->customer_id;
             $CustomerDebt->delete();
-            if(! $latestDebt) {
-                event(new DebtProcessed());
 
-            } else {
-                event(new DebtProcessed($latestDebt));
-            }
+            event(new DebtProcessed($latestDebt, $customerId));
+
             DB::commit();
 
             return $this->successResponse($message);

@@ -15,9 +15,11 @@ class DebtProcessed
     use SerializesModels;
 
     public $CustomerDebt;
-    public function __construct(?CustomerDebt $CustomerDebt = null)
+    public $customerId;
+    public function __construct(?CustomerDebt $CustomerDebt = null, $customerId)
     {
         $this->CustomerDebt = $CustomerDebt;
+        $this->customerId = $customerId;
     }
 
 }
