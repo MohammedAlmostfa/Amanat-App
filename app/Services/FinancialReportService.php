@@ -46,6 +46,7 @@ class FinancialReportService extends Service
             return $this->successResponse('تم استرجاع التقرير المالي بنجاح', $data);
         } catch (\Exception $e) {
             // Log the error details for debugging
+
             Log::error('حدث خطأ أثناء استرجاع التقرير المالي: ' . $e->getMessage());
 
             // Return an error response in case of failure
