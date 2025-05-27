@@ -27,6 +27,7 @@ class StoreCustomerDebetData extends FormRequest
             'customer_id' => 'required|integer|exists:customers,id',
             'amount_due' => 'nullable|integer|min:0|required_without:amount_paid',
             'amount_paid'  => 'nullable|integer|min:0|required_without:amount_due',
+            'commission_amount'=>'nullable|integer',
             'due_date' => 'nullable|date|before_or_equal:now',
             'notes' => 'nullable|string|max:1000',
 

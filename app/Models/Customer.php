@@ -61,14 +61,14 @@ class Customer extends Model
      */
     public function scopeFilterBy($query, array $filteringData)
     {
-        if (isset($filteringData['name'])) {
-            $query->where('name', 'LIKE', "%{$filteringData['name']}%");
-        }
-
-        if (isset($filteringData['phone'])) {
-            $query->where('phone', '=', $filteringData['phone']);
+        if (isset($filteringData['search'])) {
+            $query->where(function ($subQuery) use ($filteringData) {
+                $subQuery->where('name', 'LIKE', "%{$filteringData['search']}%")
+                         ->orWhere('phone', 'LIKE', "%{$filteringData['search']}%");
+            });
         }
 
         return $query;
     }
+
 }

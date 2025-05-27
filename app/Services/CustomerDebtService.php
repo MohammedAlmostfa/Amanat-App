@@ -40,7 +40,8 @@ class CustomerDebtService extends Service
 
             // Adjust remaining balance based on debt or payment
             if (!empty($data['amount_due'])) {
-                $newRemainingAmount += $data['amount_due'];
+                $newRemainingAmount += $data['amount_due'] + ($data['commission_amount'] ?? 0);
+
                 $message = 'تم تسجيل دين بنجاح'; // Arabic success message
             } elseif (!empty($data['amount_paid'])) {
                 $newRemainingAmount -= $data['amount_paid'];
@@ -52,6 +53,7 @@ class CustomerDebtService extends Service
                 'customer_id' => $data['customer_id'],
                 'amount_due' => $data['amount_due'] ?? 0,
                 'amount_paid' => $data['amount_paid'] ?? 0,
+                'commission_amount' => $data['commission_amount'] ?? 0,
                 'due_date' => $data['due_date'] ?? now(),
                 'remaining_amount' =>  $newRemainingAmount,
                 'notes'=> $data['notes'] ?? null,
@@ -77,9 +79,9 @@ class CustomerDebtService extends Service
     {
         DB::beginTransaction();
         try {
-            $message = 'لم يتم تعديل أي بيانات'; // Default message in Arabic
 
-            // Retrieve the latest previous debt record
+
+
             $latestDebt = CustomerDebt::where("customer_id", $CustomerDebt->customer_id)
                 ->where('id', '<', $CustomerDebt->id)
                 ->latest('id')
@@ -88,35 +90,34 @@ class CustomerDebtService extends Service
             $remainingAmount = $latestDebt->remaining_amount ?? 0;
             $newRemainingAmount = $remainingAmount;
 
-            // Update balance based on debt or payment changes
-            if (!empty($data['amount_due']) && isset($CustomerDebt->amount_due) && $CustomerDebt->amount_due > 0) {
-                $newRemainingAmount += $data['amount_due'];
-                $message = 'تم تحديث الدين بنجاح';
-            } elseif (!empty($data['amount_paid']) && isset($CustomerDebt->amount_paid) && $CustomerDebt->amount_paid > 0) {
-                $newRemainingAmount = max(0, $remainingAmount - $data['amount_paid']);
-                $message = 'تم تحديث التسديد بنجاح';
+            if ((!empty($data['amount_due']) || isset($data['commission_amount']) && $data['commission_amount'] === 0) && isset($CustomerDebt->amount_due)) {
+
+                $commissionAmount = $data['commission_amount'] ?? ($CustomerDebt->commission_amount ?? 0);
+                $amountDue = $data['amount_due'] ?? ($CustomerDebt->amount_due ?? 0);
+                $newRemainingAmount += $amountDue + $commissionAmount;
+
+            } elseif (!empty($data['amount_paid']) && isset($CustomerDebt->amount_paid)) {
+                $newRemainingAmount = max(0, $remainingAmount - ($data['amount_paid'] ?? 0));
+
             }
 
-            // If no changes were made, return without updating
-            if ($message === 'لم يتم تعديل أي بيانات') {
-                DB::commit();
-                return $this->successResponse($message);
-            }
 
-            // Update the existing debt record
+
             $CustomerDebt->update([
-                'amount_due' => $data['amount_due'] ?? 0,
-                'amount_paid' => $data['amount_paid'] ?? 0,
+                'amount_due' => $data['amount_due'] ?? $CustomerDebt->amount_due,
+                'amount_paid' => $data['amount_paid'] ?? $CustomerDebt->amount_paid,
                 'due_date' => $data['due_date'] ?? $CustomerDebt->due_date,
-                'remaining_amount' => $newRemainingAmount,
-                'notes'=> $data['notes'] ?? $CustomerDebt->notes,
+                'commission_amount' => $data['commission_amount'] ?? $CustomerDebt->commission_amount,
+                'remaining_amount' => $newRemainingAmount ??$CustomerDebt->remaining_amount,
+                'notes' => $data['notes'] ?? $CustomerDebt->notes,
             ]);
-            $customerId= $CustomerDebt->customer_id;
-            event(new DebtProcessed($latestDebt, $customerId));
+
+
+            event(new DebtProcessed($latestDebt, $CustomerDebt->customer_id));
 
 
             DB::commit();
-            return $this->successResponse($message);
+            return $this->successResponse('تم التحديث بنجاح');
 
         } catch (Exception $e) {
             DB::rollBack();
@@ -124,6 +125,7 @@ class CustomerDebtService extends Service
             return $this->errorResponse('حدث خطأ أثناء التحديث. يرجى المحاولة لاحقًا.');
         }
     }
+
 
     /**
      * Delete a customer debt record.

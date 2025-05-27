@@ -24,9 +24,10 @@ class UpdateCustomerDebetData extends FormRequest
     public function rules(): array
     {
         return [
-            'amount_due' => 'nullable|integer|min:0|required_without:amount_paid',
-            'amount_paid'  => 'nullable|integer|min:0|required_without:amount_due',
+            'amount_due' => 'nullable|integer|min:0|',
+            'amount_paid'  => 'nullable|integer|min:0|',
             'due_date' => 'nullable|date|before_or_equal:now',
+            'commission_amount'=>'nullable|integer',
             'notes' => 'nullable|string|max:1000',
             'address' => 'nullable|string|max:1000',
         ];

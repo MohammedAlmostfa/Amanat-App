@@ -16,7 +16,7 @@ class CustomerDebt extends Model
      *
      * @var array<string>
      */
-    protected $fillable = ['customer_id', 'amount_due', 'amount_paid', 'notes', 'due_date', 'remaining_amount'];
+    protected $fillable = ['customer_id', 'amount_due', 'amount_paid', 'notes', 'due_date', 'remaining_amount','commission_amount'];
 
     /**
      * The attributes that should be cast to native types.
@@ -29,6 +29,7 @@ class CustomerDebt extends Model
         'amount_paid' => 'integer',
         'due_date' => 'date',
         'notes' => 'string',
+        'commission_amount'=>'integer',
         'remaining_amount' => 'integer'
     ];
 

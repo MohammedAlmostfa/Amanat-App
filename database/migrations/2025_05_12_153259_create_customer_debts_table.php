@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->integer('amount_due')->default(0);
             $table->integer('amount_paid')->default(0);
+            $table->integer('commission_amount')->default(0);
             $table->date('due_date');
             $table->integer('remaining_amount');
             $table->text('notes')->nullable();

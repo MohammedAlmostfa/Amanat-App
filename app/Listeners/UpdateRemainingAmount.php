@@ -50,7 +50,7 @@ class UpdateRemainingAmount
                 if ($CustomerDebts->isNotEmpty()) {
                     foreach ($CustomerDebts as $CustomerDebt) {
                         // Calculate new remaining amount based on payments and dues
-                        $CustomerDebt->remaining_amount = $lastRemainingAmount - $CustomerDebt->amount_paid + $CustomerDebt->amount_due;
+                        $CustomerDebt->remaining_amount = $lastRemainingAmount - $CustomerDebt->amount_paid + $CustomerDebt->amount_due +$CustomerDebt->commission_amount;
 
                         // Save the updated debt record
                         $CustomerDebt->save();
@@ -73,7 +73,8 @@ class UpdateRemainingAmount
             // Update remaining balance for subsequent debts
             if ($CustomerDebts->isNotEmpty()) {
                 foreach ($CustomerDebts as $CustomerDebt) {
-                    $CustomerDebt->remaining_amount = $lastRemainingAmount - $CustomerDebt->amount_paid + $CustomerDebt->amount_due;
+                    $CustomerDebt->remaining_amount = $lastRemainingAmount - $CustomerDebt->amount_paid + $CustomerDebt->amount_due+$CustomerDebt->commission_amount;
+
                     $CustomerDebt->save();
                     $lastRemainingAmount = $CustomerDebt->remaining_amount;
                 }

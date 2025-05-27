@@ -59,7 +59,9 @@ class CustomerService extends Service
                 $query->where('remaining_amount', '>', 0);
             })->with(['latestdebt' => function ($query) {
                 $query->select('customer_debts.id', 'customer_debts.customer_id', 'customer_debts.remaining_amount'); // استخدام أسماء الجدول بوضوح
-            }])
+            }])   ->when(!empty($filteringData), function ($query) use ($filteringData) {
+                $query->filterBy($filteringData);
+            })
 
                 ->get()->map(function ($customer) {
 
