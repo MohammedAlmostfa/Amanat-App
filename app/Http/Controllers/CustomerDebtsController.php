@@ -56,8 +56,6 @@ class CustomerDebtsController extends Controller
      * @param CustomerDebts $CustomerDebts The debt record to update.
      * @return JsonResponse
      */
-
-
     public function update(UpdateCustomerDebetData $request, $id): JsonResponse
     {
         $CustomerDebts =CustomerDebt::findOrFail($id);

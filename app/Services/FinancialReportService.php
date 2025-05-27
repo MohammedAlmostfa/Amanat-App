@@ -37,9 +37,9 @@ class FinancialReportService extends Service
             $data = [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'remaining_amount' => $remaining_amount,
-                'amount_paid' => $amount_paid,
-                'amount_due' => $amount_due
+                'remaining_amount' => (int)$remaining_amount,
+                'amount_paid' =>  (int)$amount_paid,
+                'amount_due' =>  (int)$amount_due
             ];
 
             // Return success response with financial data
