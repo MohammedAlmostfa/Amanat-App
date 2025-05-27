@@ -55,27 +55,27 @@ class CustomerService extends Service
     public function getAllCustomersWithDebt($filteringData)
     {
         try {
-            // Fetch customers along with their latest unpaid debts
             $customers = Customer::with(['customerdebts' => function ($query) use ($filteringData) {
-                $query->select('id', 'customer_id', 'remaining_amount', 'due_date')
-                      ->where('amount_paid', 0)
-                      ->latest('id')
-                      ->when(!empty($filteringData), function ($query) use ($filteringData) {
-                          $query->filterBy($filteringData);
-                      });
+                $query->select('id', 'customer_id', 'remaining_amount', 'due_date', 'amount_paid')
+                      ->orderBy('id', 'desc')
+                      ->limit(1);
             }])->get()->map(function ($customer) {
-                // Default customer status
-                $customer->status = 1;
 
-                // Retrieve latest debt
+                $customer->status = 3;
+
+
                 $latestDebt = $customer->customerdebts->first();
 
-                if ($latestDebt) {
-                    // Calculate days difference
-                    $daysDifference = Carbon::parse($latestDebt->due_date)->diffInDays(now());
+                $latestUnpaidDebt = CustomerDebt::where('customer_id', $customer->id)
+                                                ->where('amount_paid', 0)
+                                                ->orderBy('id', 'desc')
+                                                ->first();
 
-                    // Determine status based on overdue period
-                    $customer->status = ($daysDifference > 20) ? 0 : 1;
+                if ($latestUnpaidDebt) {
+                    $daysDifference = Carbon::parse($latestUnpaidDebt->due_date)->diffInDays(now());
+
+                    // تحديث `status` بناءً على السجل غير المدفوع
+                    $customer->status = ($daysDifference > 20 || $latestDebt->remaining_amount != 0) ? 0 : 1;
                 }
 
                 return $customer;
@@ -83,9 +83,7 @@ class CustomerService extends Service
 
             return $this->successResponse('تم استرجاع العملاء بنجاح', $customers);
         } catch (Exception $e) {
-            // Log any errors
             Log::error('خطأ أثناء استرجاع العملاء: ' . $e->getMessage());
-
             return $this->errorResponse('فشل في استرجاع العملاء');
         }
     }
