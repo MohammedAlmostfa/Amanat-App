@@ -62,15 +62,18 @@ class CustomerService extends Service
             }])
 
                 ->get()->map(function ($customer) {
-                    $customer->status = 1;
+
                     $latestUnpaidDebt =      CustomerDebt::where('customer_id', $customer->id)
                         ->where('amount_paid', 0)
                         ->orderBy('id', 'desc')
                         ->first();
+                    $daysDifference = null;
+
                     if ($latestUnpaidDebt) {
                         $daysDifference = Carbon::parse($latestUnpaidDebt->due_date)->diffInDays(now());
-                        $customer->status = ($daysDifference > 20) ? 0 : 1;
                     }
+
+                    $customer->last_payment_duration = $daysDifference;
 
                     return $customer;
                 });

@@ -11,6 +11,7 @@ use App\Http\Requests\CustomerRequest\FilteringData;
 use App\Http\Requests\DebetRequest\FilteringDebtData;
 use App\Http\Requests\CustomerRequest\StoreCustomerData;
 use App\Http\Requests\CustomerRequest\UpdateCustomerData;
+use App\Http\Resources\CustomerResource as ResourcesCustomerResource;
 
 /**
  * CustomerController: Manages customer-related operations.
@@ -63,7 +64,7 @@ class CustomerController extends Controller
         $result = $this->customerService->getAllCustomersWithDebt($request->validated());
 
         return $result['status'] === 200
-            ? $this->successshow($result['data'], $result['message'], $result['status'])
+            ? $this->successshow(ResourcesCustomerResource::collection($result['data']), $result['message'], $result['status'])
             : $this->error(null, $result['message'], $result['status']);
     }
 
