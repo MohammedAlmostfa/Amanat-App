@@ -1,6 +1,6 @@
 # 🏦 **Amanat App**
 
-The **Amanat App** is a comprehensive Arabic-language **customer debt management system** built with Laravel. This application allows businesses to **track customer records, manage debt obligations, process payments with automatic balance calculations, and generate financial reports**.
+The **Amanat App** is a comprehensive  **customer debt management system** built with Laravel. This application allows businesses to **track customer records, manage debt obligations, process payments with automatic balance calculations, and generate financial reports**.
 
 The system is designed with a **RESTful API** for seamless integration and an **event-driven architecture** to ensure accurate financial tracking across all customer records.
 
